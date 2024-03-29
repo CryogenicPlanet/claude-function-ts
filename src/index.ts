@@ -145,15 +145,7 @@ export class Tools {
     const lastRole = messages[messages.length - 1].role;
 
     const automatic = async (
-      cb: ToolCallbacks<T>,
-      {
-        forceFunctionCall = false,
-      }: {
-        /**
-         * Set the stop sequence to only </function_calls> if you want to force a function call
-         **/
-        forceFunctionCall?: boolean;
-      } = {}
+      cb: ToolCallbacks<T>
     ): Promise<Result<{ role: "assistant"; content: string }, string>> => {
       let newMessage = await this.api.messages.create(
         {
@@ -162,19 +154,20 @@ export class Tools {
           system: systemPrompt,
           max_tokens: body.max_tokens_to_sample ?? 2000,
           stream: false,
-          stop_sequences: forceFunctionCall
-            ? ["\n\nHuman:", "\n\nAssistant", "</function_calls>"]
-            : ["</function_calls>"],
+          stop_sequences: ["\n\nHuman:", "\n\nAssistant", "</function_calls>"],
         },
         options
       );
 
-      let content = newMessage.content[0].text;
+      let rawContent = newMessage.content?.[0]?.text;
 
-      let count = 0;
+      let content = rawContent;
 
       while (true) {
-        count++;
+        if (rawContent === undefined || content === undefined) {
+          return Err("No content found in response");
+        }
+
         // because </function_calls> is the stop sequence, we sometimes it is not present
         if (
           content.includes("<function_calls>") &&
@@ -189,7 +182,7 @@ export class Tools {
           case "DONE":
             return Ok({
               role: "assistant",
-              content: newMessage.content[0].text,
+              content: rawContent,
             });
 
           case "ERROR":
@@ -233,14 +226,18 @@ export class Tools {
                 system: systemPrompt,
                 max_tokens: body.max_tokens_to_sample ?? 2000,
                 stream: false,
-                stop_sequences: forceFunctionCall
-                  ? ["\n\nHuman:", "\n\nAssistant", "</function_calls>"]
-                  : ["</function_calls>"],
+                stop_sequences: [
+                  "\n\nHuman:",
+                  "\n\nAssistant",
+                  "</function_calls>",
+                ],
               },
               options
             );
 
-            content = newMessage.content[0].text;
+            rawContent = newMessage.content?.[0]?.text;
+
+            content = rawContent;
         }
       }
     };
@@ -273,9 +270,21 @@ export class Tools {
         options
       );
 
-      const content = newMessage.content[0].text.includes("</function_calls>")
-        ? newMessage.content[0].text
-        : `${newMessage.content[0].text}</function_calls>`;
+      let rawContent = newMessage.content?.[0]?.text;
+
+      let content = rawContent;
+
+      if (rawContent === undefined || content === undefined) {
+        return Err("No content found in response");
+      }
+
+      // because </function_calls> is the stop sequence, we sometimes it is not present
+      if (
+        content.includes("<function_calls>") &&
+        !content.includes("</function_calls>")
+      ) {
+        content = `${content}</function_calls>`;
+      }
 
       const parsedFunctionCalls = await parseFunctionCalls(content, tools);
 

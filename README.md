@@ -104,7 +104,7 @@ Automatic will keep calling the assistant with the function results till the ass
 ```ts
 .tools.create(...).automatic(cb: {
     [toolName: string] : (params: unknown): Promise<{}> | {}
-},{forceFunctionCall = false}: {forceFunctionCall: boolean}): Promise<
+}): Promise<
       Result<
         { role: "assistant"; content: string },
         string
