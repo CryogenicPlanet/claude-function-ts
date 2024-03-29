@@ -5,11 +5,13 @@ Function calling sdk for claude in typescript (supports JSONSchema)
 
 ## Installation
 
-```bash
-npm add claude-function-ts
-yarn add claude-function-ts
-pnpm add claude-function-ts
-bun add claude-function-ts
+You need to install the `anthropic-sdk` as well to use this sdk.
+
+```sh
+npm add claude-function-ts @anthropic/anthropic-sdk
+yarn add claude-function-ts @anthropic/anthropic-sdk
+pnpm add claude-function-ts @anthropic/anthropic-sdk
+bun add claude-function-ts @anthropic/anthropic-sdk
 ```
 
 ## Quick start (with Anthropic sdk)
@@ -24,41 +26,7 @@ const anthropic = new Anthropic({
 const resp = await anthropic.tools
   .create(
     [
-      {
-        name: "emailUser",
-        description: "Send an email to a user",
-        parameters: {
-          type: "object",
-          properties: {
-            to: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  email: {
-                    type: "string",
-                    format: "email",
-                  },
-                  name: {
-                    type: "string",
-                  },
-                },
-                required: ["email", "name"],
-                additionalProperties: false,
-              },
-            },
-            subject: {
-              type: "string",
-            },
-            body: {
-              type: "string",
-            },
-          },
-          required: ["to", "subject", "body"],
-          additionalProperties: false,
-          $schema: "http://json-schema.org/draft-07/schema#",
-        },
-      },
+    //  ...JSONSchema
     ] as const,
     {
       model: "claude-3-haiku-20240307",
@@ -75,6 +43,23 @@ const resp = await anthropic.tools
   )
   .manual();
 ```
+
+## Wrap Anthropic SDK
+
+```ts
+import {withTools} from 'claude-function-ts';
+import {Anthropic} from '@anthropic/anthropic-sdk';
+
+const anthropic = new Anthropic({
+  apiKey: "YOUR_API_KEY",
+});
+
+const tools = withTools(anthropic);
+
+tools.create(...)
+
+```
+
 
 ## API
 
@@ -129,6 +114,10 @@ Automatic will keep calling the assistant with the function results till the ass
 In automatic mode you need to ensure you have the tool callbacks for the tools you are using in the conversation.
 
 - if you use `as const` while defining the tools, you can use the toolNames and the params will be properly typed in the callback.
+
+## Example
+
+[Automatic Code Example](./src/example/automatic.ts)
 
 
 ## Disclaimer

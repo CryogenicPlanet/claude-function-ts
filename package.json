@@ -1,6 +1,6 @@
 {
   "name": "claude-function-ts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "devDependencies": {
     "@cryop/zpp": "^0.0.3",
@@ -15,7 +15,8 @@
     "@anthropic-ai/sdk": "^0.19.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --external=@anthropic-ai/sdk --dts"
+    "build": "tsup src/index.ts --format esm,cjs --external=@anthropic-ai/sdk --dts",
+    "prepare": "bun run build"
   },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
