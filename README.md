@@ -8,10 +8,10 @@ Function calling sdk for claude in typescript (supports JSONSchema)
 You need to install the `anthropic-sdk` as well to use this sdk.
 
 ```sh
-npm add claude-function-ts @anthropic/anthropic-sdk
-yarn add claude-function-ts @anthropic/anthropic-sdk
-pnpm add claude-function-ts @anthropic/anthropic-sdk
-bun add claude-function-ts @anthropic/anthropic-sdk
+npm add claude-function-ts @anthropic-ai/sdk
+yarn add claude-function-ts @anthropic-ai/sdk
+pnpm add claude-function-ts @anthropic-ai/sdk
+bun add claude-function-ts @anthropic-ai/sdk
 ```
 
 ## Quick start (with Anthropic sdk)
