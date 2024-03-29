@@ -1,4 +1,4 @@
-import Anthropic from "../";
+import Anthropic from "..";
 // import Anthropic from "claude-function-ts"
 
 const anthropic = new Anthropic({
