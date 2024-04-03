@@ -10,8 +10,8 @@ import type {
 
 export type Tool = {
   name: Readonly<string>;
-  description: string;
-  parameters: JSONSchema;
+  description?: string;
+  parameters?: JSONSchema;
 };
 
 export type ToolNames<T extends ReadonlyArray<Tool>> = {

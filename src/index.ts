@@ -326,3 +326,4 @@ export class Anthropic extends Ant.Anthropic {
 export default Anthropic;
 
 export const withTools = (api: Ant.Anthropic) => new Tools(api);
+
