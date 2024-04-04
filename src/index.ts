@@ -1,6 +1,5 @@
 import * as Ant from "@anthropic-ai/sdk";
 import * as AntApi from "@anthropic-ai/sdk/resources/index";
-import { Err, Ok, Result } from "ts-results";
 
 import { parseXml } from "./xml";
 import {
@@ -17,6 +16,8 @@ import type {
   ToolNames,
   ToolOutput,
 } from "./types";
+
+import { Result, Ok, Err } from "./util/result";
 
 const getRecursiveKeys = (obj: Record<string, unknown>): string[] => {
   const keys = Object.keys(obj);
@@ -54,7 +55,7 @@ const functionCallsValidFormatAndInvokeExtraction = async (
     return Ok({ status: false, reason: "No function calls found." });
   }
 
-  const parsed = parseXml(lastCompletion);
+  const parsed = await parseXml(lastCompletion);
 
   const prefixMatch = lastCompletion.match(/^([\s\S]*?)<function_calls>/);
   let funcCallPrefixContent = "";
@@ -73,7 +74,7 @@ const functionCallsValidFormatAndInvokeExtraction = async (
   });
 };
 
-const parseFunctionCalls = async (
+export const parseFunctionCalls = async (
   lastCompletion: string,
   tools: Tool[]
 ): Promise<
@@ -302,6 +303,7 @@ export class Tools {
             role: "tool_inputs",
             content: parsedFunctionCalls.content,
             tool_inputs: parsedFunctionCalls.invoke_results,
+            __raw_content: content,
           });
         default:
           return Err("Unrecognized status in parsedFunctionCalls.");
@@ -326,4 +328,3 @@ export class Anthropic extends Ant.Anthropic {
 export default Anthropic;
 
 export const withTools = (api: Ant.Anthropic) => new Tools(api);
-

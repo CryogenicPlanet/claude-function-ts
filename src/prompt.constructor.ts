@@ -5,41 +5,39 @@ import type {
 import type { Tool, ToolMessages, ToolOutput } from "./types";
 import dedent from "dedent";
 
-import { Result } from "ts-results";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages.mjs";
 
 export const constructFormatToolForClaudePrompt = (tool: Tool): string => {
   const constructNestedParametersPrompt = (
+    indent: string,
     name: string,
     parameters: JSONSchema
   ): string => {
-    if (parameters.type !== "object" && parameters.type !== "array") {
-      return `<parameter>\n<name>${name}</name>\n<type>${parameters.type}</type>\n</parameter>\n`;
-    }
-
     switch (parameters.type) {
       case "array": {
         if (!parameters.items) {
           throw new Error("Array parameters must have properties.");
         }
 
-        let constructedPrompt = `<array-parameter>\n<name>${name}</name>\n`;
+        let constructedPrompt = `${indent}<array-parameter>\n${indent}<name>${name}</name>\n`;
 
         if (Array.isArray(parameters.items)) {
           for (const item of parameters.items) {
             constructedPrompt += constructNestedParametersPrompt(
+              indent,
               name,
               item as JSONSchema
             );
           }
         } else {
           constructedPrompt += constructNestedParametersPrompt(
+            indent,
             name,
             parameters.items as JSONSchema
           );
         }
 
-        return constructedPrompt + "</array-parameter>\n";
+        return constructedPrompt + `${indent}</array-parameter>\n`;
       }
       case "object": {
         if (!parameters.properties) {
@@ -49,43 +47,62 @@ export const constructFormatToolForClaudePrompt = (tool: Tool): string => {
         let constructedPrompt = "";
 
         const prefix =
-          name === "" ? "" : `<object-parameter>\n<name>${name}</name>\n`;
+          name === ""
+            ? ""
+            : `{${indent}<object-parameter>\n${indent}<name>${name}</name>\n`;
 
         constructedPrompt += prefix;
 
         for (const [name, object] of Object.entries(parameters.properties)) {
           constructedPrompt += constructNestedParametersPrompt(
+            indent,
             name,
             object as JSONSchema
           );
         }
 
-        const suffix = name === "" ? "" : "</object-parameter>\n";
+        const suffix = name === "" ? "" : `${indent}</object-parameter>\n`;
 
         return constructedPrompt + suffix;
       }
+      default:
+        let parameterDetails = `${indent}<parameter>\n${indent}<name>${name}</name>\n${indent}<type>${parameters.type}</type>\n`;
+        if (parameters.enum) {
+          parameterDetails += `${indent}<enum>${parameters.enum.join(
+            "|"
+          )}</enum>\n`;
+        }
+        return parameterDetails + `${indent}</parameter>\n`;
     }
   };
 
-  const constructedPrompt = dedent`<tool_description>
-  <tool_name>${tool.name}</tool_name>
-  ${tool.description ? `<description>${tool.description}</description>` : ""}
-  <parameters>
-  ${constructNestedParametersPrompt("", tool.parameters)}</parameters>
-  </tool_description>
-  `;
+  const indent = "    ";
+
+  const constructedPrompt = `
+${indent}<tool_description>
+${indent}<tool_name>${tool.name}</tool_name>
+${indent}${
+    tool.description ? `<description>${tool.description}</description>` : ""
+  }
+${indent}<parameters>
+${constructNestedParametersPrompt(
+  `${indent}${indent}`,
+  "",
+  tool.parameters!
+)}${indent}</parameters>
+${indent}</tool_description>`;
 
   return constructedPrompt;
 };
 
 export const constructToolUseSystemPrompt = (tools: Tool[]): string => {
-  const toolUseSystemPrompt = `In this environment you have access to a set of tools you can use to answer the user's question.
+  const toolUseSystemPrompt = dedent`In this environment you have access to a set of tools you can use to answer the user's question.
   You may call them like this:
   <function_calls>
   <invoke>
   <tool_name>$TOOL_NAME</tool_name>
   <parameters>
-  <$PARAMETER_NAME>$PARAMETER_VALUE</$PARAMETER_NAME>
+  <$PARAMETER_NAME><type>$PARAMETER_TYPE</type><value>$PARAMETER_VALUE</value></$PARAMETER_NAME>
   ...
   </parameters>
   </invoke>
@@ -93,9 +110,8 @@ export const constructToolUseSystemPrompt = (tools: Tool[]): string => {
   
   Here are the tools available:
   ${tools.map(
-    (tool) => dedent`<tools>
-  ${constructFormatToolForClaudePrompt(tool)}
-  </tools>`
+    (tool) => `<tools>${constructFormatToolForClaudePrompt(tool)}
+</tools>`
   )}`;
 
   return toolUseSystemPrompt;

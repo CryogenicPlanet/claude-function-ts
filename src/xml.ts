@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import type { JSONSchema7Type } from "json-schema";
-import { Err, Ok, Result } from "ts-results";
+import { type Result, Ok, Err } from "./util/result";
 
 type LeafNode = {
   type: "leaf";
@@ -59,16 +59,18 @@ export const convertValue = (value: string, typeStr: JSONSchema7Type): any => {
   }
 };
 
-export const parseXml = (
+export const parseXml = async (
   xml: string
-): Result<
-  {
-    invokes: Array<{
-      tool_name: string;
-      parameters: unknown;
-    }>;
-  },
-  string
+): Promise<
+  Result<
+    {
+      invokes: Array<{
+        tool_name: string;
+        parameters: unknown;
+      }>;
+    },
+    string
+  >
 > => {
   const parser = new XMLParser({
     isArray(tagName, jPath, isLeafNode, isAttribute) {
@@ -78,7 +80,7 @@ export const parseXml = (
 
   const json = parser.parse(xml);
 
-  //   console.dir({ json }, { depth: null });
+  console.dir({ json }, { depth: null });
 
   const function_calls = json["function_calls"]?.[0];
 
@@ -130,6 +132,8 @@ export const parseXml = (
     }
 
     for (const arr of params) {
+      console.log("arr", arr);
+
       if (!arr["name"] || !arr["value"] || !arr["type"]) {
         return Err(`Invalid parameter ${JSON.stringify(arr)}`);
       }
@@ -172,6 +176,75 @@ export const parseXml = (
         }
         case "object": {
           globalNode.children[name] = node.unwrap();
+          break;
+        }
+      }
+    }
+
+    const keys = Object.keys(parameters).filter(
+      (key) =>
+        key !== "parameter" &&
+        key !== "array-parameter" &&
+        key !== "object-parameter"
+    );
+
+    for (const key of keys) {
+      const obj = parameters[key];
+
+      if (Array.isArray(obj)) {
+        const name = key;
+        const node = parseParameters(obj, "array");
+
+        if (node.err) {
+          return node;
+        }
+
+        switch (globalNode.type) {
+          case "array": {
+            globalNode.children.push(node.unwrap());
+            break;
+          }
+          case "object": {
+            globalNode.children[name] = node.unwrap();
+            break;
+          }
+        }
+      }
+
+      if (typeof obj === "object") {
+        const name = key;
+        const node = parseParameters(obj, "object");
+
+        if (node.err) {
+          return node;
+        }
+
+        switch (globalNode.type) {
+          case "array": {
+            globalNode.children.push(node.unwrap());
+            break;
+          }
+          case "object": {
+            globalNode.children[name] = node.unwrap();
+            break;
+          }
+        }
+      }
+
+      const value = convertValue(obj, "string");
+
+      const leafNode: Node = {
+        type: "leaf",
+        value,
+      };
+
+      switch (globalNode.type) {
+        case "array": {
+          globalNode.children.push(leafNode);
+          break;
+        }
+        case "object": {
+          globalNode.children[key] = leafNode;
           break;
         }
       }
